@@ -17,6 +17,7 @@ const { registerCommands } = require('./register-commands');
 const { AutoModStore } = require('./automod/automod-store');
 const { processMessage } = require('./automod/automod-engine');
 const { handleAutomodCommand, handleAutomodInteraction, handleAutomodSelectMenu } = require('./automod/automod-command');
+const { handleModerationCommand } = require('./moderation-commands');
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error('DISCORD_TOKEN is missing. Copy .env.example to .env and fill it in.');
@@ -104,6 +105,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       case: caseStore,
     }),
     automod: () => handleAutomodCommand(interaction, automodStore),
+    mod: () => handleModerationCommand(interaction),
   };
 
   const handler = commandHandlers[interaction.commandName];
