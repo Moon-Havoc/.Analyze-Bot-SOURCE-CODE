@@ -18,6 +18,8 @@ const { AutoModStore } = require('./automod/automod-store');
 const { processMessage } = require('./automod/automod-engine');
 const { handleAutomodCommand, handleAutomodInteraction, handleAutomodSelectMenu } = require('./automod/automod-command');
 const { handleModerationCommand } = require('./moderation-commands');
+const { LockdownStore } = require('./lockdown-store');
+const { handleLockdownCommand } = require('./lockdown-command');
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error('DISCORD_TOKEN is missing. Copy .env.example to .env and fill it in.');
@@ -27,6 +29,7 @@ const ticketStore = new TicketStore(path.join(__dirname, '..', 'data', 'tickets.
 const watchlistStore = new WatchlistStore(path.join(__dirname, '..', 'data', 'watchlists.json'));
 const caseStore = new CaseStore(path.join(__dirname, '..', 'data', 'cases.json'));
 const automodStore = new AutoModStore(path.join(__dirname, '..', 'data', 'automod.json'));
+const lockdownStore = new LockdownStore(path.join(__dirname, '..', 'data', 'lockdowns.json'));
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
@@ -37,6 +40,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   await watchlistStore.init();
   await caseStore.init();
   await automodStore.init();
+  await lockdownStore.init();
 
   try {
     await registerCommands();
@@ -102,6 +106,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }),
     automod: () => handleAutomodCommand(interaction, automodStore),
     mod: () => handleModerationCommand(interaction),
+    lockdown: () => handleLockdownCommand(interaction, lockdownStore),
   };
 
   const handler = commandHandlers[interaction.commandName];

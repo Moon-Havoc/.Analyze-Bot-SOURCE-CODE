@@ -9,6 +9,7 @@ const { robloxCommand } = require('./roblox');
 const { lookupCommand } = require('./lookup-command');
 const { automodCommand } = require('./automod/automod-command');
 const { moderationCommand } = require('./moderation-commands');
+const { lockdownCommand } = require('./lockdown-command');
 
 const { DISCORD_TOKEN: token, CLIENT_ID: clientId, GUILD_ID: guildId } = process.env;
 if (!token || !clientId) {
@@ -24,6 +25,7 @@ const commands = [
   lookupCommand,
   automodCommand,
   moderationCommand,
+  lockdownCommand,
 ];
 
 const rest = new REST({ version: '10' }).setToken(token);
