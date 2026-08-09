@@ -52,11 +52,11 @@ function dashboardEmbed(interaction, config) {
 
   const embed = brandedEmbed(interaction, {
     title: `${EMOJIS.database} AutoMod Dashboard`,
-    description: `Manage your server's automated moderation filters and actions.`,
+    description: `Manage your server's automated moderation filters and security systems.`,
     color: COLORS.brand,
     fields: [
       {
-        name: `${EMOJIS.online} STATUS`,
+        name: `${EMOJIS.online} AUTOMOD STATUS`,
         value: `${statusEmoji} ${statusText}`,
         inline: true,
       },
@@ -83,10 +83,18 @@ function dashboardEmbed(interaction, config) {
         inline: false,
       },
       {
-        name: `${EMOJIS.ticket} DISABLED FILTERS (${disabledFilters.length})`,
-        value: disabledFilters.length > 0
-          ? disabledFilters.map((f) => `${EMOJIS.question} ${f.displayName}`).join('\n')
-          : '`All filters enabled`',
+        name: `${EMOJIS.warning} ANTI-NUKE`,
+        value: 'Protect against rogue admins and mass deletions',
+        inline: false,
+      },
+      {
+        name: `${EMOJIS.people} ANTI-RAID`,
+        value: 'Join gate and raid detection',
+        inline: false,
+      },
+      {
+        name: `${EMOJIS.ticket} HEAT SYSTEM`,
+        value: 'Adaptive spam detection',
         inline: false,
       },
     ],
@@ -122,9 +130,22 @@ function dashboardActions() {
  */
 function dashboardActionsRow2() {
   return new ActionRowBuilder().addComponents(
+    button('automod:logging', 'Logging', ButtonStyle.Secondary, EMOJI_IDS.database),
     button('automod:antispam', 'Anti-Spam', ButtonStyle.Secondary, EMOJI_IDS.database),
+    button('automod:antilink', 'Anti-Link', ButtonStyle.Secondary, EMOJI_IDS.link),
     button('automod:ai', 'AI Moderation', ButtonStyle.Secondary, EMOJI_IDS.database),
-    button('automod:logging', 'Logging', ButtonStyle.Secondary, EMOJI_IDS.announce),
+    button('automod:heat', 'Heat', ButtonStyle.Secondary, EMOJI_IDS.database),
+  );
+}
+
+/**
+ * Generates the dashboard third action row.
+ * @returns {ActionRowBuilder} Dashboard third button row
+ */
+function dashboardActionsRow3() {
+  return new ActionRowBuilder().addComponents(
+    button('automod:antinuke', 'Anti-Nuke', ButtonStyle.Danger, EMOJI_IDS.warning),
+    button('automod:antiraid', 'Anti-Raid', ButtonStyle.Danger, EMOJI_IDS.people),
   );
 }
 
@@ -611,6 +632,7 @@ module.exports = {
   dashboardEmbed,
   dashboardActions,
   dashboardActionsRow2,
+  dashboardActionsRow3,
   modulesEmbed,
   modulesActions,
   actionsEmbed,

@@ -15,6 +15,7 @@ const {
   dashboardEmbed,
   dashboardActions,
   dashboardActionsRow2,
+  dashboardActionsRow3,
   modulesEmbed,
   modulesActions,
   actionsEmbed,
@@ -78,7 +79,7 @@ async function handleAutomodCommand(interaction, store) {
 
     await interaction.reply({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       ephemeral: true,
       allowedMentions: NO_MENTIONS,
     });
@@ -126,7 +127,7 @@ async function handleAutomodInteraction(interaction, store) {
     });
     await interaction.update({
       embeds: [dashboardEmbed(interaction, { ...config, enabled: newEnabled })],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:toggle interaction:`, error.message);
@@ -203,7 +204,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:modules-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:modules-back interaction:`, error.message);
@@ -315,7 +316,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:actions-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:actions-back interaction:`, error.message);
@@ -326,7 +327,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:whitelist-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:whitelist-back interaction:`, error.message);
@@ -379,7 +380,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:logging-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:logging-back interaction:`, error.message);
@@ -514,7 +515,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:antilink-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:antilink-back interaction:`, error.message);
@@ -610,7 +611,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:antispam-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:antispam-back interaction:`, error.message);
@@ -667,7 +668,7 @@ async function handleAutomodInteraction(interaction, store) {
   if (action === 'automod:ai-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:ai-back interaction:`, error.message);
@@ -707,13 +708,65 @@ async function handleAutomodInteraction(interaction, store) {
     return true;
   }
 
+  if (action === 'automod:toggle') {
+    const newEnabled = !config.enabled;
+    await store.setEnabled(interaction.guildId, newEnabled);
+    await logger.logConfigChange(interaction.client, interaction.guildId, config.logChannelId, {
+      actorId: interaction.user.id,
+      actorName: interaction.user.tag,
+      changeType: 'Toggle AutoMod',
+      details: newEnabled ? 'Enabled' : 'Disabled',
+    });
+    const newConfig = await store.getGuildConfig(interaction.guildId);
+    await interaction.update({
+      embeds: [dashboardEmbed(interaction, newConfig)],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:toggle interaction:`, error.message);
+    });
+    return true;
+  }
+
   if (action === 'automod:heat-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
-      components: [dashboardActions(), dashboardActionsRow2()],
+      components: [dashboardActions(), dashboardActionsRow2(), dashboardActionsRow3()],
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:heat-back interaction:`, error.message);
+    });
+    return true;
+  }
+
+  // Anti-Nuke handler
+  if (action === 'automod:antinuke') {
+    await interaction.reply({
+      embeds: [noticeEmbed(interaction, {
+        title: 'Anti-Nuke',
+        description: 'Use `/antinuke` to configure Anti-Nuke protection against rogue admins and mass deletions.',
+        color: COLORS.danger,
+      })],
+      ephemeral: true,
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:antinuke interaction:`, error.message);
+    });
+    return true;
+  }
+
+  // Anti-Raid handler
+  if (action === 'automod:antiraid') {
+    await interaction.reply({
+      embeds: [noticeEmbed(interaction, {
+        title: 'Anti-Raid',
+        description: 'Use `/antiraid` to configure Anti-Raid protection against bot raids and suspicious joins.',
+        color: COLORS.danger,
+      })],
+      ephemeral: true,
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:antiraid interaction:`, error.message);
     });
     return true;
   }
