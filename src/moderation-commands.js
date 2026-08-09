@@ -813,7 +813,12 @@ async function handleModerationCommand(interaction) {
     ];
 
     if (roles && roles !== 'N/A') {
-      fields.push({ name: `${EMOJIS.ticket} ROLES (${member.roles.cache.size - 1})`, value: roles.slice(0, 20) });
+      const maxRolesLength = 1000;
+      let rolesDisplay = roles;
+      if (rolesDisplay.length > maxRolesLength) {
+        rolesDisplay = rolesDisplay.slice(0, maxRolesLength - 3) + '...';
+      }
+      fields.push({ name: `${EMOJIS.ticket} ROLES (${member.roles.cache.size - 1})`, value: rolesDisplay });
     }
 
     await editWithEmbed(interaction, brandedEmbed(interaction, {
