@@ -24,6 +24,9 @@ const app = require('./web/server');
 const { AntiNukeStore } = require('./antinuke/antinuke-store');
 const { AntiNukeMonitor } = require('./antinuke/antinuke-monitor');
 const { handleAntiNukeCommand } = require('./antinuke/antinuke-command');
+const { AntiRaidStore } = require('./antiraid/antiraid-store');
+const { AntiRaidMonitor } = require('./antiraid/antiraid-monitor');
+const { handleAntiRaidCommand } = require('./antiraid/antiraid-command');
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error('DISCORD_TOKEN is missing. Copy .env.example to .env and fill it in.');
@@ -35,10 +38,12 @@ const caseStore = new CaseStore(path.join(__dirname, '..', 'data', 'cases.json')
 const automodStore = new AutoModStore(path.join(__dirname, '..', 'data', 'automod.json'));
 const lockdownStore = new LockdownStore(path.join(__dirname, '..', 'data', 'lockdowns.json'));
 const antinukeStore = new AntiNukeStore(path.join(__dirname, '..', 'data', 'antinuke.json'));
+const antiraidStore = new AntiRaidStore(path.join(__dirname, '..', 'data', 'antiraid.json'));
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 const antinukeMonitor = new AntiNukeMonitor(antinukeStore, client);
+const antiraidMonitor = new AntiRaidMonitor(antiraidStore, client);
 
 client.once(Events.ClientReady, async (readyClient) => {
   await blacklistStore.init();
@@ -48,6 +53,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   await automodStore.init();
   await lockdownStore.init();
   await antinukeStore.init();
+  await antiraidStore.init();
 
   try {
     await registerCommands();
@@ -121,6 +127,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     mod: () => handleModerationCommand(interaction),
     lockdown: () => handleLockdownCommand(interaction, lockdownStore),
     antinuke: () => handleAntiNukeCommand(interaction, antinukeStore),
+    antiraid: () => handleAntiRaidCommand(interaction, antiraidStore),
   };
 
   const handler = commandHandlers[interaction.commandName];
@@ -162,6 +169,14 @@ client.on(Events.GuildAuditLogEntryCreate, async (entry, guild) => {
     await antinukeMonitor.processAuditLogEntry(entry, guild);
   } catch (error) {
     console.error('Anti-Nuke audit log processing failed:', error);
+  }
+});
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    await antiraidMonitor.processMemberJoin(member);
+  } catch (error) {
+    console.error('Anti-Raid member join processing failed:', error);
   }
 });
 

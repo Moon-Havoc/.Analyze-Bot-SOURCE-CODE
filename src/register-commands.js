@@ -11,6 +11,7 @@ const { automodCommand } = require('./automod/automod-command');
 const { moderationCommand } = require('./moderation-commands');
 const { lockdownCommand } = require('./lockdown-command');
 const { antinukeCommand } = require('./antinuke/antinuke-command');
+const { antiraidCommand } = require('./antiraid/antiraid-command');
 
 const { DISCORD_TOKEN: token, CLIENT_ID: clientId, GUILD_ID: guildId } = process.env;
 if (!token || !clientId) {
@@ -28,6 +29,7 @@ const commands = [
   moderationCommand,
   lockdownCommand,
   antinukeCommand,
+  antiraidCommand,
 ];
 
 const rest = new REST({ version: '10' }).setToken(token);
