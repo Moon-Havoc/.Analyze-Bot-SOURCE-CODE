@@ -106,11 +106,21 @@ async function hasManagementAccess(interaction) {
   if (!interaction.inGuild()) return false;
   
   // Administrators always have access
-  if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return true;
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    console.log('[Mod Command] Access granted: Administrator permission');
+    return true;
+  }
   
   // Check for management team role
-  if (interaction.member.roles.cache.has(MANAGEMENT_ROLE_ID)) return true;
+  console.log(`[Mod Command] Checking for management role: ${MANAGEMENT_ROLE_ID}`);
+  console.log(`[Mod Command] User roles: ${Array.from(interaction.member.roles.cache.keys()).join(', ')}`);
   
+  if (interaction.member.roles.cache.has(MANAGEMENT_ROLE_ID)) {
+    console.log('[Mod Command] Access granted: Management Team role');
+    return true;
+  }
+  
+  console.log('[Mod Command] Access denied: No valid permissions');
   return false;
 }
 
