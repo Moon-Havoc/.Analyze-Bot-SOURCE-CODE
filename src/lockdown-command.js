@@ -18,6 +18,10 @@ const lockdownCommand = new SlashCommandBuilder()
     .setName('initiate')
     .setDescription('Initiate a full server lockdown.')
     .addStringOption((option) => option
+      .setName('auth_key')
+      .setDescription('Executive authentication key')
+      .setRequired(true))
+    .addStringOption((option) => option
       .setName('reason')
       .setDescription('Reason for the lockdown')
       .setMaxLength(500)
@@ -147,12 +151,26 @@ async function handleLockdownCommand(interaction, store) {
   const subcommand = interaction.options.getSubcommand();
 
   if (subcommand === 'initiate') {
+    const authKey = interaction.options.getString('auth_key', true);
     const reason = interaction.options.getString('reason', true);
 
     await interaction.deferReply({ ephemeral: true });
 
     if (!EXECUTIVE_AUTH_KEY) {
       await editWithEmbed(interaction, errorEmbed(interaction, 'EXECUTIVE_AUTH_KEY is not configured. Please contact the bot administrator.'));
+      return;
+    }
+
+    if (!verifyAuthKey(authKey)) {
+      await auditLog(interaction.client, interaction.guildId, {
+        action: 'LOCKDOWN_FAILED_ATTEMPT',
+        actorId: interaction.user.id,
+        target: 'Server',
+        detail: `<@${interaction.user.id}> failed to initiate server lockdown (invalid authentication key).`,
+        color: COLORS.danger,
+      });
+
+      await editWithEmbed(interaction, errorEmbed(interaction, 'Invalid authentication key. Access denied.'));
       return;
     }
 
