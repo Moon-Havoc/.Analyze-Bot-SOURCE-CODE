@@ -21,6 +21,9 @@ const { handleModerationCommand } = require('./moderation-commands');
 const { LockdownStore } = require('./lockdown-store');
 const { handleLockdownCommand } = require('./lockdown-command');
 const app = require('./web/server');
+const { AntiNukeStore } = require('./antinuke/antinuke-store');
+const { AntiNukeMonitor } = require('./antinuke/antinuke-monitor');
+const { handleAntiNukeCommand } = require('./antinuke/antinuke-command');
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error('DISCORD_TOKEN is missing. Copy .env.example to .env and fill it in.');
@@ -31,9 +34,11 @@ const watchlistStore = new WatchlistStore(path.join(__dirname, '..', 'data', 'wa
 const caseStore = new CaseStore(path.join(__dirname, '..', 'data', 'cases.json'));
 const automodStore = new AutoModStore(path.join(__dirname, '..', 'data', 'automod.json'));
 const lockdownStore = new LockdownStore(path.join(__dirname, '..', 'data', 'lockdowns.json'));
+const antinukeStore = new AntiNukeStore(path.join(__dirname, '..', 'data', 'antinuke.json'));
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
+const antinukeMonitor = new AntiNukeMonitor(antinukeStore, client);
 
 client.once(Events.ClientReady, async (readyClient) => {
   await blacklistStore.init();
@@ -42,6 +47,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   await caseStore.init();
   await automodStore.init();
   await lockdownStore.init();
+  await antinukeStore.init();
 
   try {
     await registerCommands();
@@ -50,6 +56,11 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 
   console.log(`Ready as ${readyClient.user.tag}.`);
+
+  // Initialize Anti-Nuke for all guilds
+  for (const [_, guild] of readyClient.guilds.cache) {
+    await antinukeMonitor.initGuild(guild);
+  }
 
   // Re-apply the server denylist after a restart.
   for (const guild of readyClient.guilds.cache.values()) {
@@ -109,6 +120,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     automod: () => handleAutomodCommand(interaction, automodStore),
     mod: () => handleModerationCommand(interaction),
     lockdown: () => handleLockdownCommand(interaction, lockdownStore),
+    antinuke: () => handleAntiNukeCommand(interaction, antinukeStore),
   };
 
   const handler = commandHandlers[interaction.commandName];
@@ -142,6 +154,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
       `target top role position: ${member.roles.highest.position},`,
       `bot has Ban Members: ${botMember?.permissions.has('BanMembers') ?? 'unknown'})`,
     );
+  }
+});
+
+client.on(Events.GuildAuditLogEntryCreate, async (entry, guild) => {
+  try {
+    await antinukeMonitor.processAuditLogEntry(entry, guild);
+  } catch (error) {
+    console.error('Anti-Nuke audit log processing failed:', error);
   }
 });
 
