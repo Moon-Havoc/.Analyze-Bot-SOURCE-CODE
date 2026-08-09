@@ -92,6 +92,72 @@ const moderationCommand = new SlashCommandBuilder()
       .setName('user')
       .setDescription('Only delete messages from this user')
       .setRequired(false)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('lock')
+    .setDescription('Lock the current channel (prevent @everyone from sending messages).')
+    .addStringOption((option) => option
+      .setName('reason')
+      .setDescription('Reason for locking the channel')
+      .setMaxLength(500)
+      .setRequired(false)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('unlock')
+    .setDescription('Unlock the current channel (allow @everyone to send messages).')
+    .addStringOption((option) => option
+      .setName('reason')
+      .setDescription('Reason for unlocking the channel')
+      .setMaxLength(500)
+      .setRequired(false)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('slowmode')
+    .setDescription('Set slowmode for the current channel.')
+    .addIntegerOption((option) => option
+      .setName('seconds')
+      .setDescription('Slowmode duration in seconds (0 to disable)')
+      .setMinValue(0)
+      .setMaxValue(21600) // 6 hours max
+      .setRequired(true)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('nickname')
+    .setDescription('Change a member\'s nickname.')
+    .addUserOption((option) => option
+      .setName('user')
+      .setDescription('Member to rename')
+      .setRequired(true))
+    .addStringOption((option) => option
+      .setName('nickname')
+      .setDescription('New nickname (leave empty to reset)')
+      .setMaxLength(32)
+      .setRequired(false)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('addrole')
+    .setDescription('Add a role to a member.')
+    .addUserOption((option) => option
+      .setName('user')
+      .setDescription('Member to add role to')
+      .setRequired(true))
+    .addRoleOption((option) => option
+      .setName('role')
+      .setDescription('Role to add')
+      .setRequired(true)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('removerole')
+    .setDescription('Remove a role from a member.')
+    .addUserOption((option) => option
+      .setName('user')
+      .setDescription('Member to remove role from')
+      .setRequired(true))
+    .addRoleOption((option) => option
+      .setName('role')
+      .setDescription('Role to remove')
+      .setRequired(true)))
+  .addSubcommand((subcommand) => subcommand
+    .setName('info')
+    .setDescription('Get information about a member.')
+    .addUserOption((option) => option
+      .setName('user')
+      .setDescription('Member to get info for')
+      .setRequired(true)))
   .setDMPermission(false);
 
 function quote(value) {
@@ -468,6 +534,293 @@ async function handleModerationCommand(interaction) {
         { name: `${EMOJIS.ticket} AMOUNT`, value: `${messages.length} messages`, inline: true },
         { name: `${EMOJIS.ticket} CHANNEL`, value: interaction.channel.name, inline: true },
       ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'lock') {
+    const reason = interaction.options.getString('reason') ?? 'No reason provided';
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(() => null);
+    const permissions = botMember?.permissionsIn(interaction.channel);
+    
+    if (!permissions || !permissions.has(PermissionFlagsBits.ManageChannels)) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I do not have permission to manage this channel.'));
+      return;
+    }
+
+    await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+      SendMessages: false,
+    }, `Locked by ${interaction.user.tag}: ${reason}`);
+
+    await auditLog(interaction.client, interaction.guildId, {
+      action: 'MOD_LOCK',
+      actorId: interaction.user.id,
+      target: `Channel: ${interaction.channel.name}`,
+      detail: `<@${interaction.user.id}> locked ${interaction.channel.name}.`,
+      color: COLORS.warning,
+      fields: [{ name: `${EMOJIS.ticket} REASON`, value: quote(reason) }],
+    });
+
+    await editWithEmbed(interaction, successEmbed(interaction, {
+      title: 'Channel locked',
+      description: `${interaction.channel.name} has been locked. @everyone can no longer send messages.`,
+      fields: [
+        { name: `${EMOJIS.ticket} CHANNEL`, value: interaction.channel.name, inline: true },
+        { name: `${EMOJIS.ticket} REASON`, value: quote(reason), inline: true },
+      ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'unlock') {
+    const reason = interaction.options.getString('reason') ?? 'No reason provided';
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(() => null);
+    const permissions = botMember?.permissionsIn(interaction.channel);
+    
+    if (!permissions || !permissions.has(PermissionFlagsBits.ManageChannels)) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I do not have permission to manage this channel.'));
+      return;
+    }
+
+    await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+      SendMessages: null,
+    }, `Unlocked by ${interaction.user.tag}: ${reason}`);
+
+    await auditLog(interaction.client, interaction.guildId, {
+      action: 'MOD_UNLOCK',
+      actorId: interaction.user.id,
+      target: `Channel: ${interaction.channel.name}`,
+      detail: `<@${interaction.user.id}> unlocked ${interaction.channel.name}.`,
+      color: COLORS.success,
+      fields: [{ name: `${EMOJIS.ticket} REASON`, value: quote(reason) }],
+    });
+
+    await editWithEmbed(interaction, successEmbed(interaction, {
+      title: 'Channel unlocked',
+      description: `${interaction.channel.name} has been unlocked. @everyone can now send messages.`,
+      fields: [
+        { name: `${EMOJIS.ticket} CHANNEL`, value: interaction.channel.name, inline: true },
+        { name: `${EMOJIS.ticket} REASON`, value: quote(reason), inline: true },
+      ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'slowmode') {
+    const seconds = interaction.options.getInteger('seconds', true);
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(() => null);
+    const permissions = botMember?.permissionsIn(interaction.channel);
+    
+    if (!permissions || !permissions.has(PermissionFlagsBits.ManageChannels)) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I do not have permission to manage this channel.'));
+      return;
+    }
+
+    await interaction.channel.setRateLimitPerUser(seconds, `Slowmode set by ${interaction.user.tag}`);
+
+    await auditLog(interaction.client, interaction.guildId, {
+      action: 'MOD_SLOWMODE',
+      actorId: interaction.user.id,
+      target: `Channel: ${interaction.channel.name}`,
+      detail: `<@${interaction.user.id}> set slowmode in ${interaction.channel.name} to ${seconds} seconds.`,
+      color: seconds > 0 ? COLORS.warning : COLORS.success,
+      fields: [{ name: `${EMOJIS.ticket} DURATION`, value: seconds === 0 ? 'Disabled' : `${seconds} seconds`, inline: true }],
+    });
+
+    await editWithEmbed(interaction, successEmbed(interaction, {
+      title: 'Slowmode updated',
+      description: `${interaction.channel.name} slowmode has been set to ${seconds === 0 ? 'disabled' : `${seconds} seconds`}.`,
+      fields: [
+        { name: `${EMOJIS.ticket} CHANNEL`, value: interaction.channel.name, inline: true },
+        { name: `${EMOJIS.ticket} DURATION`, value: seconds === 0 ? 'Disabled' : `${seconds} seconds`, inline: true },
+      ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'nickname') {
+    const user = interaction.options.getUser('user', true);
+    const nickname = interaction.options.getString('nickname');
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (!member) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'This member is not in the server.'));
+      return;
+    }
+
+    if (!member.manageable) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I cannot change this member\'s nickname. Check my role position and permissions.'));
+      return;
+    }
+
+    await member.setNickname(nickname || null, `Nickname changed by ${interaction.user.tag}`);
+
+    await auditLog(interaction.client, interaction.guildId, {
+      action: 'MOD_NICKNAME',
+      actorId: interaction.user.id,
+      target: userTarget(user),
+      detail: `<@${interaction.user.id}> changed ${user.username}'s nickname to ${nickname ? `"${nickname}"` : 'default'}.`,
+      color: COLORS.brand,
+      fields: [{ name: `${EMOJIS.ticket} NEW NICKNAME`, value: nickname || 'Reset to default', inline: true }],
+    });
+
+    await editWithEmbed(interaction, successEmbed(interaction, {
+      title: 'Nickname updated',
+      description: `<@${user.id}>'s nickname has been ${nickname ? 'changed' : 'reset'}.`,
+      fields: [
+        { name: `${EMOJIS.people} TARGET`, value: userTarget(user), inline: true },
+        { name: `${EMOJIS.ticket} NEW NICKNAME`, value: nickname || 'Reset to default', inline: true },
+      ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'addrole') {
+    const user = interaction.options.getUser('user', true);
+    const role = interaction.options.getRole('role', true);
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (!member) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'This member is not in the server.'));
+      return;
+    }
+
+    if (member.roles.cache.has(role.id)) {
+      await editWithEmbed(interaction, noticeEmbed(interaction, {
+        title: 'Role already assigned',
+        description: `<@${user.id}> already has the ${role.name} role.`,
+        color: COLORS.neutral,
+      }));
+      return;
+    }
+
+    if (!member.manageable) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I cannot manage this member. Check my role position and permissions.'));
+      return;
+    }
+
+    if (role.position >= interaction.guild.members.me.roles.highest.position) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I cannot assign a role that is higher than or equal to my highest role.'));
+      return;
+    }
+
+    await member.roles.add(role, `Role added by ${interaction.user.tag}`);
+
+    await auditLog(interaction.client, interaction.guildId, {
+      action: 'MOD_ADDROLE',
+      actorId: interaction.user.id,
+      target: userTarget(user),
+      detail: `<@${interaction.user.id}> added ${role.name} role to <@${user.id}>.`,
+      color: COLORS.success,
+      fields: [{ name: `${EMOJIS.ticket} ROLE`, value: role.name, inline: true }],
+    });
+
+    await editWithEmbed(interaction, successEmbed(interaction, {
+      title: 'Role added',
+      description: `${role.name} has been added to <@${user.id}>.`,
+      fields: [
+        { name: `${EMOJIS.people} TARGET`, value: userTarget(user), inline: true },
+        { name: `${EMOJIS.ticket} ROLE`, value: role.name, inline: true },
+      ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'removerole') {
+    const user = interaction.options.getUser('user', true);
+    const role = interaction.options.getRole('role', true);
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    if (!member) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'This member is not in the server.'));
+      return;
+    }
+
+    if (!member.roles.cache.has(role.id)) {
+      await editWithEmbed(interaction, noticeEmbed(interaction, {
+        title: 'Role not assigned',
+        description: `<@${user.id}> does not have the ${role.name} role.`,
+        color: COLORS.neutral,
+      }));
+      return;
+    }
+
+    if (!member.manageable) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I cannot manage this member. Check my role position and permissions.'));
+      return;
+    }
+
+    if (role.position >= interaction.guild.members.me.roles.highest.position) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'I cannot remove a role that is higher than or equal to my highest role.'));
+      return;
+    }
+
+    await member.roles.remove(role, `Role removed by ${interaction.user.tag}`);
+
+    await auditLog(interaction.client, interaction.guildId, {
+      action: 'MOD_REMOVEROLE',
+      actorId: interaction.user.id,
+      target: userTarget(user),
+      detail: `<@${interaction.user.id}> removed ${role.name} role from <@${user.id}>.`,
+      color: COLORS.warning,
+      fields: [{ name: `${EMOJIS.ticket} ROLE`, value: role.name, inline: true }],
+    });
+
+    await editWithEmbed(interaction, successEmbed(interaction, {
+      title: 'Role removed',
+      description: `${role.name} has been removed from <@${user.id}>.`,
+      fields: [
+        { name: `${EMOJIS.people} TARGET`, value: userTarget(user), inline: true },
+        { name: `${EMOJIS.ticket} ROLE`, value: role.name, inline: true },
+      ],
+    }));
+    return;
+  }
+
+  if (subcommand === 'info') {
+    const user = interaction.options.getUser('user', true);
+
+    await interaction.deferReply({ ephemeral: true });
+
+    const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+    const joinedAt = member?.joinedAt ? Math.floor(member.joinedAt.getTime() / 1000) : 'N/A';
+    const createdAt = Math.floor(user.createdAt.getTime() / 1000);
+    const roles = member ? member.roles.cache.filter(r => r.id !== interaction.guild.id).map(r => r.name).join(', ') : 'N/A';
+    const isBot = user.bot ? 'Yes' : 'No';
+
+    const fields = [
+      { name: `${EMOJIS.people} USERNAME`, value: user.username, inline: true },
+      { name: `${EMOJIS.people} DISPLAY NAME`, value: user.displayName, inline: true },
+      { name: `${EMOJIS.people} ID`, value: user.id, inline: true },
+      { name: `${EMOJIS.people} BOT`, value: isBot, inline: true },
+      { name: `${EMOJIS.online} ACCOUNT CREATED`, value: `<t:${createdAt}:F>\n<t:${createdAt}:R>`, inline: true },
+      { name: `${EMOJIS.online} JOINED SERVER`, value: joinedAt !== 'N/A' ? `<t:${joinedAt}:F>\n<t:${joinedAt}:R>` : 'N/A', inline: true },
+    ];
+
+    if (roles && roles !== 'N/A') {
+      fields.push({ name: `${EMOJIS.ticket} ROLES (${member.roles.cache.size - 1})`, value: roles.slice(0, 20) });
+    }
+
+    await editWithEmbed(interaction, brandedEmbed(interaction, {
+      title: `${EMOJIS.people} Member Information`,
+      description: `Information for <@${user.id}>`,
+      color: COLORS.brand,
+      fields,
     }));
     return;
   }
