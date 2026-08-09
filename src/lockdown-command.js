@@ -9,6 +9,7 @@ const {
 const { auditLog } = require('./audit');
 
 const EXECUTIVE_ROLE_ID = process.env.EXECUTIVE_ROLE_ID || '1494510299976568842';
+const EXECUTIVE_AUTH_KEY = process.env.EXECUTIVE_AUTH_KEY;
 
 const lockdownCommand = new SlashCommandBuilder()
   .setName('lockdown')
@@ -37,15 +38,6 @@ function quote(value) {
   return `> ${value.replace(/\n/g, '\n> ')}`;
 }
 
-function generateAuthKey() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let key = '';
-  for (let i = 0; i < 12; i++) {
-    key += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return key;
-}
-
 async function hasExecutiveAccess(interaction) {
   if (!interaction.inGuild()) return false;
   
@@ -69,6 +61,14 @@ async function requireExecutiveAccess(interaction) {
     allowedMentions: NO_MENTIONS,
   });
   return false;
+}
+
+function verifyAuthKey(inputKey) {
+  if (!EXECUTIVE_AUTH_KEY) {
+    console.error('EXECUTIVE_AUTH_KEY is not configured in environment variables.');
+    return false;
+  }
+  return inputKey === EXECUTIVE_AUTH_KEY;
 }
 
 function successEmbed(interaction, { title, description, fields = [] }) {
@@ -151,22 +151,25 @@ async function handleLockdownCommand(interaction, store) {
 
     await interaction.deferReply({ ephemeral: true });
 
+    if (!EXECUTIVE_AUTH_KEY) {
+      await editWithEmbed(interaction, errorEmbed(interaction, 'EXECUTIVE_AUTH_KEY is not configured. Please contact the bot administrator.'));
+      return;
+    }
+
     if (store.isLocked(interaction.guildId)) {
       await editWithEmbed(interaction, noticeEmbed(interaction, {
         title: 'Server already locked down',
-        description: 'This server is already in lockdown mode. Use /lockdown lift with the authentication key to unlock.',
+        description: 'This server is already in lockdown mode. Use /lockdown lift with the executive authentication key to unlock.',
         color: COLORS.warning,
       }));
       return;
     }
 
-    const authKey = generateAuthKey();
     const lockedChannels = await lockAllChannels(interaction.guild);
 
     await store.setLockdown(interaction.guildId, {
       lockedBy: interaction.user.id,
       reason,
-      authKey,
       channelsLocked: lockedChannels,
     });
 
@@ -189,10 +192,9 @@ async function handleLockdownCommand(interaction, store) {
       fields: [
         { name: `${EMOJIS.ticket} REASON`, value: quote(reason) },
         { name: `${EMOJIS.ticket} CHANNELS LOCKED`, value: `${lockedChannels.length}`, inline: true },
-        { name: `${EMOJIS.warning} AUTHENTICATION KEY`, value: `\`${authKey}\``, inline: true },
         {
-          name: `${EMOJIS.question} IMPORTANT`,
-          value: 'Save this key securely. You will need it to lift the lockdown. This key will not be shown again.',
+          name: `${EMOJIS.question} TO UNLOCK`,
+          value: 'Use /lockdown lift with the executive authentication key.',
         },
       ],
     }));
@@ -213,7 +215,7 @@ async function handleLockdownCommand(interaction, store) {
       return;
     }
 
-    if (!store.verifyAuthKey(interaction.guildId, authKey)) {
+    if (!verifyAuthKey(authKey)) {
       await auditLog(interaction.client, interaction.guildId, {
         action: 'LOCKDOWN_FAILED_ATTEMPT',
         actorId: interaction.user.id,

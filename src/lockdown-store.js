@@ -34,7 +34,6 @@ class LockdownStore {
       lockedAt: new Date().toISOString(),
       lockedBy: data.lockedBy,
       reason: data.reason,
-      authKey: data.authKey,
       channelsLocked: data.channelsLocked || [],
     };
     await this.save();
@@ -43,11 +42,6 @@ class LockdownStore {
   async removeLockdown(guildId) {
     delete this.data[guildId];
     await this.save();
-  }
-
-  verifyAuthKey(guildId, authKey) {
-    const lockdown = this.data[guildId];
-    return lockdown && lockdown.authKey === authKey;
   }
 }
 
