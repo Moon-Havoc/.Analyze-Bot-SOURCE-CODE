@@ -16,7 +16,7 @@ const { NO_MENTIONS } = require('./brand');
 const { registerCommands } = require('./register-commands');
 const { AutoModStore } = require('./automod/automod-store');
 const { processMessage } = require('./automod/automod-engine');
-const { handleAutomodCommand, handleAutomodInteraction, handleAutomodSelectMenu } = require('./automod/automod-command');
+const { handleAutomodCommand, handleAutomodInteraction, handleAutomodSelectMenu, handleAutomodModalSubmit } = require('./automod/automod-command');
 const { handleModerationCommand } = require('./moderation-commands');
 const { LockdownStore } = require('./lockdown-store');
 const { handleLockdownCommand } = require('./lockdown-command');
@@ -76,9 +76,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Route ticket interactions (commands, buttons, modals) first.
     if (await handleTicketInteraction(interaction, ticketStore)) return;
 
-    // Route AutoMod interactions (buttons, select menus).
+    // Route AutoMod interactions (buttons, select menus, modals).
     if (await handleAutomodInteraction(interaction, automodStore)) return;
     if (await handleAutomodSelectMenu(interaction, automodStore)) return;
+    if (await handleAutomodModalSubmit(interaction, automodStore)) return;
   } catch (error) {
     console.error('Interaction handling failed:', error);
     const reply = {

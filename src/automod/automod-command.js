@@ -4,6 +4,10 @@ const {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ChannelType,
 } = require('discord.js');
 const { COLORS, EMOJIS, brandedEmbed, noticeEmbed, NO_MENTIONS } = require('../brand');
 const { AutoModLogger } = require('./automod-logger');
@@ -328,6 +332,48 @@ async function handleAutomodInteraction(interaction, store) {
     return true;
   }
 
+  if (action === 'automod:whitelist-add-role') {
+    const modal = new ModalBuilder()
+      .setCustomId('automod:whitelist-add-role-modal')
+      .setTitle('Add Whitelisted Role');
+
+    const roleInput = new TextInputBuilder()
+      .setCustomId('role')
+      .setLabel('Role ID or @role')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('e.g., @Moderator or 123456789012345678')
+      .setRequired(true);
+
+    const actionRow = new ActionRowBuilder().addComponents(roleInput);
+    modal.addComponents(actionRow);
+
+    await interaction.showModal(modal).catch((error) => {
+      console.error(`Failed to show whitelist-add-role modal:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:whitelist-add-channel') {
+    const modal = new ModalBuilder()
+      .setCustomId('automod:whitelist-add-channel-modal')
+      .setTitle('Add Whitelisted Channel');
+
+    const channelInput = new TextInputBuilder()
+      .setCustomId('channel')
+      .setLabel('Channel ID or #channel')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('e.g., #general or 123456789012345678')
+      .setRequired(true);
+
+    const actionRow = new ActionRowBuilder().addComponents(channelInput);
+    modal.addComponents(actionRow);
+
+    await interaction.showModal(modal).catch((error) => {
+      console.error(`Failed to show whitelist-add-channel modal:`, error.message);
+    });
+    return true;
+  }
+
   if (action === 'automod:logging-back') {
     await interaction.update({
       embeds: [dashboardEmbed(interaction, config)],
@@ -353,6 +399,27 @@ async function handleAutomodInteraction(interaction, store) {
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:logging-clear interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:logging-set') {
+    const modal = new ModalBuilder()
+      .setCustomId('automod:logging-set-modal')
+      .setTitle('Set Log Channel');
+
+    const channelInput = new TextInputBuilder()
+      .setCustomId('channel')
+      .setLabel('Channel ID or #channel')
+      .setStyle(TextInputStyle.Short)
+      .setPlaceholder('e.g., #general or 123456789012345678')
+      .setRequired(true);
+
+    const actionRow = new ActionRowBuilder().addComponents(channelInput);
+    modal.addComponents(actionRow);
+
+    await interaction.showModal(modal).catch((error) => {
+      console.error(`Failed to show logging-set modal:`, error.message);
     });
     return true;
   }
@@ -687,6 +754,163 @@ async function handleAutomodSelectMenu(interaction, store) {
 }
 
 /**
+ * Handles AutoMod modal submit interactions.
+ * @param {Interaction} interaction - Discord interaction
+ * @param {AutoModStore} store - AutoMod store instance
+ * @returns {Promise<boolean>} True if interaction was handled, false otherwise
+ */
+async function handleAutomodModalSubmit(interaction, store) {
+  try {
+    if (!interaction.isModalSubmit()) return false;
+
+    const config = await store.getGuildConfig(interaction.guildId);
+
+    // Handle logging channel set modal
+    if (interaction.customId === 'automod:logging-set-modal') {
+      const channelInput = interaction.fields.getTextInputValue('channel');
+      let channelId = channelInput.trim();
+
+      // Parse channel mention or ID
+      if (channelInput.startsWith('<#') && channelInput.endsWith('>')) {
+        channelId = channelInput.slice(2, -1);
+      }
+
+      // Verify the channel exists
+      const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+      if (!channel) {
+        await interaction.reply({
+          embeds: [noticeEmbed(interaction, {
+            title: 'Invalid Channel',
+            description: 'Could not find that channel. Please check the channel ID or mention.',
+            color: COLORS.danger,
+          })],
+          ephemeral: true,
+          allowedMentions: NO_MENTIONS,
+        });
+        return true;
+      }
+
+      await store.setLogChannel(interaction.guildId, channelId);
+      await logger.logConfigChange(interaction.client, interaction.guildId, config.logChannelId, {
+        actorId: interaction.user.id,
+        actorName: interaction.user.tag,
+        changeType: 'Set Log Channel',
+        details: `Set to <#${channelId}>`,
+      });
+
+      const newConfig = await store.getGuildConfig(interaction.guildId);
+      await interaction.update({
+        embeds: [loggingEmbed(interaction, newConfig)],
+        components: [loggingActions()],
+        allowedMentions: NO_MENTIONS,
+      });
+      return true;
+    }
+
+    // Handle whitelist add role modal
+    if (interaction.customId === 'automod:whitelist-add-role-modal') {
+      const roleInput = interaction.fields.getTextInputValue('role');
+      let roleId = roleInput.trim();
+
+      // Parse role mention or ID
+      if (roleInput.startsWith('<@&') && roleInput.endsWith('>')) {
+        roleId = roleInput.slice(3, -1);
+      }
+
+      // Verify the role exists
+      const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
+      if (!role) {
+        await interaction.reply({
+          embeds: [noticeEmbed(interaction, {
+            title: 'Invalid Role',
+            description: 'Could not find that role. Please check the role ID or mention.',
+            color: COLORS.danger,
+          })],
+          ephemeral: true,
+          allowedMentions: NO_MENTIONS,
+        });
+        return true;
+      }
+
+      await store.addIgnoredRole(interaction.guildId, roleId);
+      await logger.logConfigChange(interaction.client, interaction.guildId, config.logChannelId, {
+        actorId: interaction.user.id,
+        actorName: interaction.user.tag,
+        changeType: 'Add Whitelisted Role',
+        details: `Added <@&${roleId}>`,
+      });
+
+      const newConfig = await store.getGuildConfig(interaction.guildId);
+      await interaction.update({
+        embeds: [whitelistEmbed(interaction, newConfig)],
+        components: [whitelistActions()],
+        allowedMentions: NO_MENTIONS,
+      });
+      return true;
+    }
+
+    // Handle whitelist add channel modal
+    if (interaction.customId === 'automod:whitelist-add-channel-modal') {
+      const channelInput = interaction.fields.getTextInputValue('channel');
+      let channelId = channelInput.trim();
+
+      // Parse channel mention or ID
+      if (channelInput.startsWith('<#') && channelInput.endsWith('>')) {
+        channelId = channelInput.slice(2, -1);
+      }
+
+      // Verify the channel exists
+      const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
+      if (!channel) {
+        await interaction.reply({
+          embeds: [noticeEmbed(interaction, {
+            title: 'Invalid Channel',
+            description: 'Could not find that channel. Please check the channel ID or mention.',
+            color: COLORS.danger,
+          })],
+          ephemeral: true,
+          allowedMentions: NO_MENTIONS,
+        });
+        return true;
+      }
+
+      await store.addIgnoredChannel(interaction.guildId, channelId);
+      await logger.logConfigChange(interaction.client, interaction.guildId, config.logChannelId, {
+        actorId: interaction.user.id,
+        actorName: interaction.user.tag,
+        changeType: 'Add Whitelisted Channel',
+        details: `Added <#${channelId}>`,
+      });
+
+      const newConfig = await store.getGuildConfig(interaction.guildId);
+      await interaction.update({
+        embeds: [whitelistEmbed(interaction, newConfig)],
+        components: [whitelistActions()],
+        allowedMentions: NO_MENTIONS,
+      });
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('handleAutomodModalSubmit failed:', error);
+    console.error('Full stack trace:', error.stack);
+    const reply = {
+      embeds: [noticeEmbed(interaction, {
+        title: 'Modal Error',
+        description: 'Failed to process modal submission. Please try again.',
+        color: COLORS.danger,
+      })],
+      ephemeral: true,
+      allowedMentions: NO_MENTIONS,
+    };
+    if (interaction.deferred || interaction.replied) await interaction.editReply(reply).catch(() => null);
+    else await interaction.reply(reply).catch(() => null);
+    return true;
+  }
+}
+
+/**
  * Creates the modules select menu.
  * @param {object} config - Guild AutoMod configuration
  * @returns {ActionRowBuilder} Select menu action row
@@ -713,4 +937,5 @@ module.exports = {
   handleAutomodCommand,
   handleAutomodInteraction,
   handleAutomodSelectMenu,
+  handleAutomodModalSubmit,
 };
