@@ -124,6 +124,7 @@ function dashboardActions() {
 function dashboardActionsRow2() {
   return new ActionRowBuilder().addComponents(
     button('automod:antispam', 'Anti-Spam', ButtonStyle.Secondary, EMOJI_IDS.database),
+    button('automod:ai', 'AI Moderation', ButtonStyle.Secondary, EMOJI_IDS.database),
     button('automod:logging', 'Logging', ButtonStyle.Secondary, EMOJI_IDS.announce),
   );
 }
@@ -469,6 +470,83 @@ function antiSpamActions() {
   );
 }
 
+/**
+ * Generates the AI Moderation settings embed.
+ * @param {Interaction} interaction - Discord interaction
+ * @param {object} config - Guild AutoMod configuration
+ * @returns {EmbedBuilder} AI Moderation embed
+ */
+function aiModerationEmbed(interaction, config) {
+  const aiConfig = config.filterConfigs['ai-moderation'] || { enabled: false };
+  const apiKeyConfigured = process.env.PERSPECTIVE_API_KEY ? true : false;
+
+  const embed = brandedEmbed(interaction, {
+    title: `${EMOJIS.database} AI Moderation`,
+    description: 'Configure AI-powered content moderation using Google Perspective API.',
+    color: COLORS.brand,
+    fields: [
+      {
+        name: `${EMOJIS.check} STATUS`,
+        value: config.enabledFilters.has('ai-moderation') ? `${EMOJIS.online} Enabled` : `${EMOJIS.question} Disabled`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.link} API KEY`,
+        value: apiKeyConfigured ? `${EMOJIS.check} Configured` : `${EMOJIS.question} Not configured`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.ticket} TOXICITY THRESHOLD`,
+        value: `${Math.round((aiConfig.toxicityThreshold || 0.7) * 100)}%`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.people} HARASSMENT THRESHOLD`,
+        value: `${Math.round((aiConfig.harassmentThreshold || 0.7) * 100)}%`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.announce} PROFANITY THRESHOLD`,
+        value: `${Math.round((aiConfig.profanityThreshold || 0.8) * 100)}%`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.warning} THREAT THRESHOLD`,
+        value: `${Math.round((aiConfig.threatThreshold || 0.7) * 100)}%`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.database} INSULT THRESHOLD`,
+        value: `${Math.round((aiConfig.insultThreshold || 0.7) * 100)}%`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.people} IDENTITY ATTACK THRESHOLD`,
+        value: `${Math.round((aiConfig.identityAttackThreshold || 0.7) * 100)}%`,
+        inline: true,
+      },
+    ],
+  });
+
+  if (interaction.inGuild()) {
+    embed.setFooter({ text: `${interaction.guild.name} • AutoMod v1.0` });
+  }
+
+  return embed;
+}
+
+/**
+ * Generates the AI Moderation action row.
+ * @returns {ActionRowBuilder} AI Moderation button row
+ */
+function aiModerationActions() {
+  return new ActionRowBuilder().addComponents(
+    button('automod:ai-toggle', 'Toggle Module', ButtonStyle.Primary, EMOJI_IDS.online),
+    button('automod:ai-thresholds', 'Thresholds', ButtonStyle.Secondary, EMOJI_IDS.ticket),
+    button('automod:ai-back', '← Back', ButtonStyle.Secondary, EMOJI_IDS.check),
+  );
+}
+
 module.exports = {
   dashboardEmbed,
   dashboardActions,
@@ -486,4 +564,6 @@ module.exports = {
   antiLinkActions,
   antiSpamEmbed,
   antiSpamActions,
+  aiModerationEmbed,
+  aiModerationActions,
 };

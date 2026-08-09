@@ -24,6 +24,8 @@ const {
   antiLinkActions,
   antiSpamEmbed,
   antiSpamActions,
+  aiModerationEmbed,
+  aiModerationActions,
 } = require('./automod-ui');
 const { getAvailableFilters, getFilterById } = require('./automod-engine');
 
@@ -543,6 +545,63 @@ async function handleAutomodInteraction(interaction, store) {
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:antispam-back interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:ai') {
+    await interaction.update({
+      embeds: [aiModerationEmbed(interaction, config)],
+      components: [aiModerationActions()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:ai interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:ai-toggle') {
+    const isEnabled = config.enabledFilters.has('ai-moderation');
+    await store.setFilterEnabled(interaction.guildId, 'ai-moderation', !isEnabled);
+    await logger.logConfigChange(interaction.client, interaction.guildId, config.logChannelId, {
+      actorId: interaction.user.id,
+      actorName: interaction.user.tag,
+      changeType: 'Toggle AI Moderation',
+      details: !isEnabled ? 'Enabled' : 'Disabled',
+    });
+    const newConfig = await store.getGuildConfig(interaction.guildId);
+    await interaction.update({
+      embeds: [aiModerationEmbed(interaction, newConfig)],
+      components: [aiModerationActions()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:ai-toggle interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:ai-thresholds') {
+    await interaction.update({
+      embeds: [noticeEmbed(interaction, {
+        title: 'Threshold Configuration',
+        description: 'Threshold configuration will be implemented via modal input in a future update.\n\nFor now, thresholds can be configured directly via the API.\n\nCurrent thresholds:\n• Toxicity: 70%\n• Harassment: 70%\n• Profanity: 80%\n• Threat: 70%\n• Insult: 70%\n• Identity Attack: 70%',
+        color: COLORS.neutral,
+      })],
+      components: [aiModerationActions()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:ai-thresholds interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:ai-back') {
+    await interaction.update({
+      embeds: [dashboardEmbed(interaction, config)],
+      components: [dashboardActions(), dashboardActionsRow2()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:ai-back interaction:`, error.message);
     });
     return true;
   }

@@ -4,6 +4,7 @@ const { badWordsFilter } = require('./filters/bad-words');
 const { spamFilter } = require('./filters/spam');
 const { capsFilter } = require('./filters/caps');
 const { massMentionsFilter } = require('./filters/mass-mentions');
+const { aiModerationFilter } = require('./filters/ai-moderation');
 const { executeActions } = require('./automod-actions');
 const { MessageCache } = require('./message-cache');
 
@@ -29,6 +30,7 @@ const FILTERS = [
   spamFilter,
   capsFilter,
   massMentionsFilter,
+  aiModerationFilter,
 ];
 
 // Global message cache instance for spam detection
