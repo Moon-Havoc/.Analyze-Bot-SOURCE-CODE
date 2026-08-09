@@ -1,6 +1,6 @@
 /**
  * Caps Filter
- * Detects and blocks excessive capitalization (placeholder).
+ * Detects and blocks excessive capitalization.
  * 
  * Filter interface:
  * - id: Unique identifier for the filter
@@ -21,7 +21,6 @@ const capsFilter = {
 
   /**
    * Checks if a message has excessive capitalization.
-   * Placeholder implementation - always returns false.
    * @param {Message} message - Discord message object
    * @param {object} config - Filter configuration
    * @param {number} config.minCapsPercentage - Minimum percentage of caps to trigger
@@ -29,7 +28,30 @@ const capsFilter = {
    * @returns {Promise<{triggered: boolean, reason?: string}>}
    */
   async check(message, config) {
-    // Placeholder: full caps detection logic to be implemented
+    const { minCapsPercentage, minCapsLength } = config;
+    const content = message.content;
+
+    // Skip if message is too short
+    if (content.length < minCapsLength) {
+      return { triggered: false };
+    }
+
+    // Count uppercase letters (excluding URLs and special cases)
+    const letters = content.replace(/[^a-zA-Z]/g, '');
+    if (letters.length === 0) {
+      return { triggered: false };
+    }
+
+    const uppercaseLetters = letters.replace(/[^A-Z]/g, '');
+    const capsPercentage = (uppercaseLetters.length / letters.length) * 100;
+
+    if (capsPercentage >= minCapsPercentage) {
+      return {
+        triggered: true,
+        reason: `Excessive capitalization: ${Math.round(capsPercentage)}% caps`,
+      };
+    }
+
     return { triggered: false };
   },
 };
