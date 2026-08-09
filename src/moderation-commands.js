@@ -106,21 +106,11 @@ async function hasManagementAccess(interaction) {
   if (!interaction.inGuild()) return false;
   
   // Administrators always have access
-  if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-    console.log('[Mod Command] Access granted: Administrator permission');
-    return true;
-  }
+  if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) return true;
   
   // Check for management team role
-  console.log(`[Mod Command] Checking for management role: ${MANAGEMENT_ROLE_ID}`);
-  console.log(`[Mod Command] User roles: ${Array.from(interaction.member.roles.cache.keys()).join(', ')}`);
+  if (interaction.member.roles.cache.has(MANAGEMENT_ROLE_ID)) return true;
   
-  if (interaction.member.roles.cache.has(MANAGEMENT_ROLE_ID)) {
-    console.log('[Mod Command] Access granted: Management Team role');
-    return true;
-  }
-  
-  console.log('[Mod Command] Access denied: No valid permissions');
   return false;
 }
 
@@ -428,12 +418,8 @@ async function handleModerationCommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true });
 
-    console.log(`[Purge] Channel: ${interaction.channel?.id}, Channel exists: ${!!interaction.channel}`);
     const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(() => null);
-    console.log(`[Purge] Bot member: ${botMember ? 'found' : 'null'}`);
     const permissions = botMember?.permissionsIn(interaction.channel);
-    console.log(`[Purge] Permissions: ${permissions ? 'found' : 'null'}`);
-    console.log(`[Purge] Has ManageMessages: ${permissions?.has(PermissionFlagsBits.ManageMessages)}`);
     
     if (!permissions || !permissions.has(PermissionFlagsBits.ManageMessages)) {
       await editWithEmbed(interaction, errorEmbed(interaction, 'I do not have permission to delete messages in this channel.'));
