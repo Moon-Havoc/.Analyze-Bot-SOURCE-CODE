@@ -428,7 +428,11 @@ async function handleModerationCommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true });
 
+    console.log(`[Purge] Channel: ${interaction.channel?.id}, Channel exists: ${!!interaction.channel}`);
     const permissions = interaction.channel?.permissionsFor(interaction.client);
+    console.log(`[Purge] Permissions: ${permissions ? 'found' : 'null'}`);
+    console.log(`[Purge] Has ManageMessages: ${permissions?.has(PermissionFlagsBits.ManageMessages)}`);
+    
     if (!permissions || !permissions.has(PermissionFlagsBits.ManageMessages)) {
       await editWithEmbed(interaction, errorEmbed(interaction, 'I do not have permission to delete messages in this channel.'));
       return;
