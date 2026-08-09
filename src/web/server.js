@@ -52,9 +52,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api', apiRoutes);
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Web Server] Running on port ${PORT}`);
   console.log(`[Web Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`[Web Server] WEB_URL: ${process.env.WEB_URL || 'not set'}`);
+}).on('error', (error) => {
+  console.error('[Web Server] Failed to start:', error.message);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`[Web Server] Port ${PORT} is already in use`);
+  }
 });
 
 module.exports = app;
