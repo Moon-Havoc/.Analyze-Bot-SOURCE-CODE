@@ -428,7 +428,8 @@ async function handleModerationCommand(interaction) {
 
     await interaction.deferReply({ ephemeral: true });
 
-    if (!interaction.channel.permissionsFor(interaction.client).has(PermissionFlagsBits.ManageMessages)) {
+    const permissions = interaction.channel?.permissionsFor(interaction.client);
+    if (!permissions || !permissions.has(PermissionFlagsBits.ManageMessages)) {
       await editWithEmbed(interaction, errorEmbed(interaction, 'I do not have permission to delete messages in this channel.'));
       return;
     }
