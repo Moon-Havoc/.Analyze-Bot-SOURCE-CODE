@@ -54,12 +54,8 @@ client.once(Events.ClientReady, async (readyClient) => {
     }
   }
 
-  // Refresh the ticket support panel if a support channel is configured.
-  try {
-    await ensureTicketPanel(readyClient, ticketStore);
-  } catch (error) {
-    console.warn('Ticket panel refresh skipped:', error.message);
-  }
+  // Note: Ticket panel is no longer auto-refreshed on startup to prevent duplicate posts.
+  // Use /ticket panel to manually refresh the support panel when needed.
 });
 
 client.on(Events.MessageCreate, async (message) => {
