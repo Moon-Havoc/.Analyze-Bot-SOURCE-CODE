@@ -429,7 +429,9 @@ async function handleModerationCommand(interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     console.log(`[Purge] Channel: ${interaction.channel?.id}, Channel exists: ${!!interaction.channel}`);
-    const permissions = interaction.channel?.permissionsFor(interaction.client);
+    const botMember = await interaction.guild.members.fetch(interaction.client.user.id).catch(() => null);
+    console.log(`[Purge] Bot member: ${botMember ? 'found' : 'null'}`);
+    const permissions = botMember?.permissionsIn(interaction.channel);
     console.log(`[Purge] Permissions: ${permissions ? 'found' : 'null'}`);
     console.log(`[Purge] Has ManageMessages: ${permissions?.has(PermissionFlagsBits.ManageMessages)}`);
     
