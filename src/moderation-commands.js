@@ -92,7 +92,6 @@ const moderationCommand = new SlashCommandBuilder()
       .setName('user')
       .setDescription('Only delete messages from this user')
       .setRequired(false)))
-  .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .setDMPermission(false);
 
 function quote(value) {
