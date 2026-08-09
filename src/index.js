@@ -20,6 +20,7 @@ const { handleAutomodCommand, handleAutomodInteraction, handleAutomodSelectMenu,
 const { handleModerationCommand } = require('./moderation-commands');
 const { LockdownStore } = require('./lockdown-store');
 const { handleLockdownCommand } = require('./lockdown-command');
+const app = require('./web/server');
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error('DISCORD_TOKEN is missing. Copy .env.example to .env and fill it in.');
