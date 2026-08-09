@@ -30,6 +30,8 @@ const {
   antiSpamActions,
   aiModerationEmbed,
   aiModerationActions,
+  heatEmbed,
+  heatActions,
 } = require('./automod-ui');
 const { getAvailableFilters, getFilterById } = require('./automod-engine');
 
@@ -669,6 +671,49 @@ async function handleAutomodInteraction(interaction, store) {
       allowedMentions: NO_MENTIONS,
     }).catch((error) => {
       console.error(`Failed to update automod:ai-back interaction:`, error.message);
+    });
+    return true;
+  }
+
+  // Heat configuration handlers
+  if (action === 'automod:heat') {
+    await interaction.update({
+      embeds: [heatEmbed(interaction, config)],
+      components: [heatActions()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:heat interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:heat-toggle') {
+    const isEnabled = config.enabledFilters.has('heat');
+    await store.setFilterEnabled(interaction.guildId, 'heat', !isEnabled);
+    await logger.logConfigChange(interaction.client, interaction.guildId, config.logChannelId, {
+      actorId: interaction.user.id,
+      actorName: interaction.user.tag,
+      changeType: 'Toggle Heat Module',
+      details: !isEnabled ? 'Enabled' : 'Disabled',
+    });
+    const newConfig = await store.getGuildConfig(interaction.guildId);
+    await interaction.update({
+      embeds: [heatEmbed(interaction, newConfig)],
+      components: [heatActions()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:heat-toggle interaction:`, error.message);
+    });
+    return true;
+  }
+
+  if (action === 'automod:heat-back') {
+    await interaction.update({
+      embeds: [dashboardEmbed(interaction, config)],
+      components: [dashboardActions(), dashboardActionsRow2()],
+      allowedMentions: NO_MENTIONS,
+    }).catch((error) => {
+      console.error(`Failed to update automod:heat-back interaction:`, error.message);
     });
     return true;
   }

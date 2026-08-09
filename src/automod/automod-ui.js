@@ -112,7 +112,6 @@ function dashboardActions() {
     button('automod:toggle', 'Toggle AutoMod', ButtonStyle.Primary, EMOJI_IDS.online),
     button('automod:modules', 'Modules', ButtonStyle.Secondary, EMOJI_IDS.database),
     button('automod:actions', 'Actions', ButtonStyle.Secondary, EMOJI_IDS.ticket),
-    button('automod:antilink', 'Anti-Link', ButtonStyle.Secondary, EMOJI_IDS.database),
     button('automod:whitelist', 'Whitelist', ButtonStyle.Secondary, EMOJI_IDS.people),
   );
 }
@@ -547,6 +546,67 @@ function aiModerationActions() {
   );
 }
 
+/**
+ * Generates the Heat settings embed.
+ * @param {Interaction} interaction - Discord interaction
+ * @param {object} config - Guild AutoMod configuration
+ * @returns {EmbedBuilder} Heat embed
+ */
+function heatEmbed(interaction, config) {
+  const heatConfig = config.filterConfigs['heat'] || { enabled: false };
+
+  const embed = brandedEmbed(interaction, {
+    title: `${EMOJIS.database} Heat`,
+    description: 'Adaptive spam detection that accumulates heat based on message activity and diminishes over time.',
+    color: COLORS.brand,
+    fields: [
+      {
+        name: `${EMOJIS.check} STATUS`,
+        value: config.enabledFilters.has('heat') ? `${EMOJIS.online} Enabled` : `${EMOJIS.question} Disabled`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.ticket} HEAT THRESHOLD`,
+        value: `${heatConfig.heatThreshold || 100}`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.database} MAX HEAT`,
+        value: `${heatConfig.maxHeat || 200}`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.people} DECAY RATE`,
+        value: `${((heatConfig.decayRate || 0.95) * 100).toFixed(0)}%`,
+        inline: true,
+      },
+      {
+        name: `${EMOJIS.ticket} BASE HEAT INCREASE`,
+        value: `${heatConfig.baseHeatIncrease || 10}`,
+        inline: true,
+      },
+    ],
+  });
+
+  if (interaction.inGuild()) {
+    embed.setFooter({ text: `${interaction.guild.name} • AutoMod v1.0` });
+  }
+
+  return embed;
+}
+
+/**
+ * Generates the Heat action row.
+ * @returns {ActionRowBuilder} Heat button row
+ */
+function heatActions() {
+  return new ActionRowBuilder().addComponents(
+    button('automod:heat-toggle', 'Toggle Module', ButtonStyle.Primary, EMOJI_IDS.online),
+    button('automod:heat-thresholds', 'Thresholds', ButtonStyle.Secondary, EMOJI_IDS.ticket),
+    button('automod:heat-back', '← Back', ButtonStyle.Secondary, EMOJI_IDS.check),
+  );
+}
+
 module.exports = {
   dashboardEmbed,
   dashboardActions,
@@ -566,4 +626,6 @@ module.exports = {
   antiSpamActions,
   aiModerationEmbed,
   aiModerationActions,
+  heatEmbed,
+  heatActions,
 };
